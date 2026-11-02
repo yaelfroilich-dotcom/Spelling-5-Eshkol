@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>פוקימון איות: מאמנים אלופים באנגלית</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Canvas Confetti -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- Google Fonts: Fredoka & Rubik -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Rubik:wght@400;600;800;900&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      font-family: 'Rubik', sans-serif;
+      user-select: none;
+    }
+    .font-eng {
+      font-family: 'Fredoka', cursive, sans-serif;
+    }
+    
+    /* Pokéball wobble animation */
+    @keyframes pokeball-wobble {
+      0% { transform: rotate(0deg); }
+      20% { transform: rotate(-25deg); }
+      40% { transform: rotate(20deg); }
+      60% { transform: rotate(-15deg); }
+      80% { transform: rotate(10deg); }
+      100% { transform: rotate(0deg); }
+    }
+    .wobble-ball {
+      animation: pokeball-wobble 0.75s ease-in-out;
+    }
+
+    /* Screen shake */
+    @keyframes battle-shake {
+      0%, 100% { transform: translate(0, 0); }
+      20% { transform: translate(-8px, 4px); }
+      40% { transform: translate(8px, -4px); }
+      60% { transform: translate(-6px, 2px); }
+      80% { transform: translate(6px, -2px); }
+    }
+    .shake-anim {
+      animation: battle-shake 0.4s ease-in-out;
+    }
+
+    /* Pokémon Pop-in */
+    @keyframes pokemon-float {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-7px) scale(1.02); }
+    }
+    .poke-float {
+      animation: pokemon-float 2.8s ease-in-out infinite;
+    }
+
+    /* Glow catch pulse */
+    @keyframes catch-burst {
+      0% { transform: scale(0.6); opacity: 0; filter: brightness(2); }
+      50% { transform: scale(1.15); opacity: 1; filter: brightness(1.4); }
+      100% { transform: scale(1); filter: brightness(1); }
+    }
+    .catch-anim {
+      animation: catch-burst 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-sky-400 via-indigo-600 to-purple-800 min-h-screen text-slate-800 flex flex-col justify-between items-center p-3 sm:p-5 relative overflow-x-hidden">
+
+  <!-- Header / Trainer Status Bar -->
+  <header class="w-full max-w-2xl bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-3.5 sm:p-4 mb-3 border-4 border-amber-300">
+    <div class="flex items-center justify-between gap-2">
+      
+      <!-- Trainer Badge & Title -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <!-- SVG Pokeball Icon -->
+        <div class="w-10 h-10 sm:w-12 sm:h-12 relative flex-shrink-0 animate-pulse">
+          <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-md">
+            <circle cx="50" cy="50" r="48" fill="#ef4444" />
+            <path d="M 2 50 A 48 48 0 0 0 98 50 Z" fill="#ffffff" />
+            <line x1="2" y1="50" x2="98" y2="50" stroke="#1e293b" stroke-width="8" />
+            <circle cx="50" cy="50" r="14" fill="#ffffff" stroke="#1e293b" stroke-width="8" />
+            <circle cx="50" cy="50" r="6" fill="#f8fafc" />
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-base sm:text-xl font-black text-slate-900 leading-tight">מאמני האיות: פוקימון!</h1>
+          <p id="progress-indicator" class="text-xs sm:text-sm font-bold text-indigo-700">קרב 1 מתוך 12 ⚡</p>
+        </div>
+      </div>
+
+      <!-- Stats: Pokeballs Caught, Score, Streak -->
+      <div class="flex items-center gap-1.5 sm:gap-2">
+        <!-- Streak -->
+        <div class="bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-2xl flex items-center gap-1">
+          <span class="text-base">🔥</span>
+          <span id="streak-count" class="font-black text-amber-900 text-xs sm:text-sm">0</span>
+        </div>
+        <!-- Caught Count -->
+        <div class="bg-red-50 border border-red-300 px-2.5 py-1 rounded-2xl flex items-center gap-1 shadow-sm">
+          <span class="text-sm">🔴</span>
+          <span id="caught-count" class="font-black text-red-700 text-xs sm:text-sm">0/12</span>
+        </div>
+        <!-- Points -->
+        <div class="bg-emerald-100 border border-emerald-300 px-2.5 py-1 rounded-2xl flex items-center gap-1 shadow-sm">
+          <span class="text-sm">⭐</span>
+          <span id="score-count" class="font-black text-emerald-900 text-xs sm:text-sm">0</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- HP / Exp Progress Bar -->
+    <div class="w-full bg-slate-200 h-3 rounded-full mt-3 overflow-hidden border border-slate-300 p-0.5">
+      <div id="exp-bar" class="bg-gradient-to-r from-emerald-400 via-teal-400 to-amber-400 h-full rounded-full transition-all duration-300" style="width: 8%;"></div>
+    </div>
+  </header>
+
+  <!-- Main Game Arena -->
+  <main class="w-full max-w-2xl flex-1 flex flex-col justify-center">
+
+    <!-- Mode Selector Tabs -->
+    <div class="flex justify-center gap-2 sm:gap-3 mb-2.5">
+      <button id="mode-type-btn" onclick="setMode('type')" class="px-4 py-1.5 sm:px-5 sm:py-2 rounded-2xl text-xs sm:text-sm font-black shadow-md border-2 bg-amber-300 text-indigo-950 border-amber-400 scale-105 transition-all">
+        ✍️ כתיבה במקלדת
+      </button>
+      <button id="mode-scramble-btn" onclick="setMode('scramble')" class="px-4 py-1.5 sm:px-5 sm:py-2 rounded-2xl text-xs sm:text-sm font-black shadow-md border-2 bg-white/80 text-slate-700 border-white/60 hover:bg-white transition-all">
+        🧩 בניית מילה (אותיות)
+      </button>
+    </div>
+
+    <!-- Battle Card -->
+    <div id="battle-card" class="bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-5 sm:p-7 border-4 border-amber-300 text-center relative overflow-hidden">
+      
+      <!-- Wild Pokemon Encounter Podium -->
+      <div class="relative bg-gradient-to-b from-sky-100 to-indigo-50 rounded-2xl p-3 sm:p-4 mb-4 border-2 border-indigo-100 flex items-center justify-around">
+        
+        <!-- Left: Wild Pokemon Sprite & Info -->
+        <div class="flex flex-col items-center">
+          <div class="relative w-24 h-24 sm:w-28 sm:h-28 flex items-center justify-center">
+            <img id="poke-sprite" src="" alt="Pokemon" class="w-full h-full object-contain poke-float drop-shadow-lg" />
+          </div>
+          <span id="poke-name" class="font-eng font-bold text-xs sm:text-sm bg-indigo-900 text-amber-300 px-3 py-0.5 rounded-full shadow mt-1">
+            Pikachu
+          </span>
+        </div>
+
+        <!-- Center: Battle Target Meaning -->
+        <div class="flex-1 px-2 text-center">
+          <div class="inline-block bg-amber-400 text-indigo-950 text-[11px] sm:text-xs font-black px-3 py-1 rounded-xl shadow-sm mb-1">
+            ⚡ פוקימון פראי הופיע! רשמו באנגלית:
+          </div>
+          <div id="hebrew-target" class="text-2xl sm:text-4xl font-black text-slate-800 tracking-wide mt-1 mb-2">
+            כרטיס ברכה
+          </div>
+          
+          <!-- Audio Button -->
+          <button id="speak-btn" onclick="pronounceTargetWord()" class="bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-extrabold px-4 py-1.5 rounded-xl shadow-md text-xs sm:text-sm inline-flex items-center gap-1.5 transition">
+            <span>🔊 השמעת המילה</span>
+          </button>
+        </div>
+
+      </div>
+
+      <!-- MODE 1: Direct Typing Input -->
+      <div id="type-section" class="mt-2">
+        <div class="relative max-w-sm mx-auto">
+          <input 
+            type="text" 
+            id="word-input" 
+            dir="ltr"
+            autocomplete="off" 
+            autocorrect="off" 
+            autocapitalize="off" 
+            spellcheck="false"
+            placeholder="Type here..."
+            class="font-eng text-2xl sm:text-3xl font-black text-center tracking-widest w-full py-3 px-4 rounded-2xl border-4 border-indigo-200 focus:border-indigo-600 focus:ring-4 focus:ring-amber-200 outline-none transition-all shadow-inner text-indigo-900 uppercase"
+            onkeydown="handleKey(event)"
+          />
+        </div>
+        <p class="text-[11px] sm:text-xs text-slate-400 mt-1 font-semibold">לחצו Enter במקלדת או על כפתור "תפוס פוקימון!"</p>
+      </div>
+
+      <!-- MODE 2: Scrambled Letters Builder -->
+      <div id="scramble-section" class="hidden mt-2">
+        <div id="built-letters-slot" dir="ltr" class="font-eng flex flex-wrap justify-center gap-1.5 min-h-[50px] p-2 bg-slate-100 border-2 border-dashed border-indigo-300 rounded-2xl mb-3 text-2xl font-black">
+          <!-- Filled dynamically -->
+        </div>
+
+        <!-- Available Letter Tiles -->
+        <div id="scramble-tiles-bank" dir="ltr" class="flex flex-wrap justify-center gap-2">
+          <!-- Injected via JS -->
+        </div>
+
+        <button onclick="resetScrambleWord()" class="mt-3 px-3 py-1 bg-rose-100 hover:bg-rose-200 text-rose-700 text-xs font-bold rounded-xl transition">
+          🔄 איפוס אותיות
+        </button>
+      </div>
+
+      <!-- Hint Box -->
+      <div id="hint-display" class="hidden mt-3 p-2.5 bg-amber-50 border-2 border-amber-300 rounded-2xl text-amber-900 text-xs sm:text-sm font-bold">
+        💡 רמז של פרופסור אוק: <span id="hint-content" dir="ltr" class="font-eng font-black tracking-widest text-indigo-700"></span>
+      </div>
+
+      <!-- Feedback Box -->
+      <div id="feedback-banner" class="hidden mt-3 p-3 rounded-2xl text-sm sm:text-base font-black flex items-center justify-center gap-2">
+      </div>
+
+      <!-- Actions Toolbar -->
+      <div class="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+        <button id="hint-btn" onclick="askForHint()" class="bg-amber-100 hover:bg-amber-200 active:scale-95 text-amber-900 border-2 border-amber-300 font-black px-4 py-2.5 rounded-2xl text-xs sm:text-sm flex items-center gap-1 shadow-sm transition">
+          <span>💡 רמז</span>
+        </button>
+
+        <button id="submit-btn" onclick="checkSpelling()" class="bg-gradient-to-r from-red-500 via-rose-500 to-red-600 hover:from-red-600 hover:to-rose-700 text-white font-black px-6 py-2.5 sm:px-8 sm:py-3 rounded-2xl text-sm sm:text-base shadow-lg shadow-rose-300 flex items-center gap-2 active:scale-95 transition">
+          <span class="text-xl">🔴</span>
+          <span>תפוס פוקימון!</span>
+        </button>
+
+        <button id="next-word-btn" onclick="goToNextWord()" class="hidden bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black px-7 py-2.5 sm:py-3 rounded-2xl text-sm sm:text-base shadow-lg shadow-emerald-200 flex items-center gap-2 active:scale-95 transition">
+          <span>לפוקימון הבא ⚡</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- Final Pokédex Hall of Fame Screen -->
+    <div id="pokedex-summary" class="hidden bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl p-5 sm:p-8 border-4 border-amber-400 text-center catch-anim">
+      <div class="text-6xl mb-2">🏆</div>
+      <h2 class="text-2xl sm:text-3xl font-black text-slate-900 mb-1">כל הכבוד, מאמן מאסטר!</h2>
+      <p class="text-xs sm:text-sm text-indigo-700 font-bold mb-4">סיימת את מסע האיות של יחידה 1! הנה הפוקידע שלך:</p>
+
+      <!-- Stats Grid -->
+      <div class="grid grid-cols-3 gap-2.5 max-w-sm mx-auto mb-4">
+        <div class="bg-indigo-50 border-2 border-indigo-200 p-2.5 rounded-2xl">
+          <span class="text-[11px] font-bold text-indigo-700 block">נקודות</span>
+          <span id="final-score" class="text-xl sm:text-2xl font-black text-indigo-950">0</span>
+        </div>
+        <div class="bg-red-50 border-2 border-red-200 p-2.5 rounded-2xl">
+          <span class="text-[11px] font-bold text-red-700 block">נתפסו</span>
+          <span id="final-caught" class="text-xl sm:text-2xl font-black text-red-900">0/12</span>
+        </div>
+        <div class="bg-amber-50 border-2 border-amber-200 p-2.5 rounded-2xl">
+          <span class="text-[11px] font-bold text-amber-700 block">רצף שיא</span>
+          <span id="final-streak" class="text-xl sm:text-2xl font-black text-amber-900">0</span>
+        </div>
+      </div>
+
+      <!-- Caught Pokédex Showcase -->
+      <div class="bg-slate-50 border-2 border-slate-200 rounded-2xl p-3 mb-5">
+        <h4 class="text-xs font-black text-slate-600 mb-2">פוקימונים שנתפסו בהצלחה באיות:</h4>
+        <div id="pokedex-grid" class="grid grid-cols-4 sm:grid-cols-6 gap-2">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex flex-wrap justify-center gap-3">
+        <button onclick="startTrainingGame(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white font-black px-6 py-2.5 rounded-2xl shadow-lg shadow-indigo-300 text-xs sm:text-sm transition">
+          🔄 לשחק שוב מחדש
+        </button>
+        <button id="retry-mistakes-btn" onclick="startTrainingGame(true)" class="hidden bg-amber-500 hover:bg-amber-600 text-white font-black px-6 py-2.5 rounded-2xl shadow-lg shadow-amber-300 text-xs sm:text-sm transition">
+          🎯 תרגול חוזר רק של המילים שטעיתי
+        </button>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Word Bank Trigger Footer -->
+  <footer class="w-full max-w-2xl mt-3 flex items-center justify-between text-white font-bold text-xs px-2">
+    <span>Fantastic Five - Unit 1 (אוצר מילים 5 עמוד 49)</span>
+    <button onclick="toggleWordBankModal()" class="underline hover:text-amber-300 transition bg-white/20 backdrop-blur-sm px-3 py-1 rounded-xl">
+      📖 רשימת כל המילים
+    </button>
+  </footer>
+
+  <!-- Word Bank Modal -->
+  <div id="word-bank-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-3xl p-5 max-w-md w-full shadow-2xl max-h-[85vh] flex flex-col">
+      <div class="flex items-center justify-between border-b pb-2 mb-2">
+        <h3 class="text-base font-black text-slate-800 flex items-center gap-1.5">
+          <span>📖</span> מילות ההכתבה של היחידה
+        </h3>
+        <button onclick="toggleWordBankModal()" class="text-slate-400 hover:text-slate-700 text-2xl font-bold leading-none">&times;</button>
+      </div>
+      <div id="word-bank-list" class="overflow-y-auto flex-1 divide-y divide-slate-100">
+        <!-- Rendered by JS -->
+      </div>
+      <div class="pt-3 border-t text-center">
+        <button onclick="toggleWordBankModal()" class="w-full py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl text-xs sm:text-sm">
+          סגירה וחזרה למשחק
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================
+       1. VOCABULARY DATA WITH POKEMON THEME (Unit 1 Page 49)
+       ======================================================== */
+    const POKEMON_VOCAB = [
+      { id: 1, english: "card", hebrew: "כרטיס ברכה", poke: "Pikachu", pokeId: 25 },
+      { id: 2, english: "end", hebrew: "סוף (end)", poke: "Charmander", pokeId: 4 },
+      { id: 3, english: "flower", hebrew: "פרח", poke: "Bulbasaur", pokeId: 1 },
+      { id: 4, english: "for", hebrew: "ל..., עבור, למשך", poke: "Squirtle", pokeId: 7 },
+      { id: 5, english: "hear", hebrew: "לשמוע", poke: "Jigglypuff", pokeId: 39 },
+      { id: 6, english: "I'm sorry", hebrew: "אני מצטער", alt: "im sorry", poke: "Psyduck", pokeId: 54 },
+      { id: 7, english: "market", hebrew: "שוק", poke: "Meowth", pokeId: 52 },
+      { id: 8, english: "present", hebrew: "מתנה", poke: "Eevee", pokeId: 133 },
+      { id: 9, english: "pretty", hebrew: "יפה", poke: "Togepi", pokeId: 175 },
+      { id: 10, english: "sell", hebrew: "למכור", poke: "Snorlax", pokeId: 143 },
+      { id: 11, english: "thing", hebrew: "דבר", poke: "Gengar", pokeId: 94 },
+      { id: 12, english: "village", hebrew: "כפר", poke: "Lucario", pokeId: 448 }
+    ];
+
+    /* ========================================================
+       2. WEB AUDIO API SYNTHESIZER
+       ======================================================== */
+    let audioContext = null;
+
+    function getAudioCtx() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioContext.state === 'suspended') {
+        audioContext.resume();
+      }
+      return audioContext;
+    }
+
+    function playPokeSound(effect) {
+      try {
+        const ctx = getAudioCtx();
+        const now = ctx.currentTime;
+
+        if (effect === 'throw') {
+          // Pokeball swish & click
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(300, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.15);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.22);
+        } else if (effect === 'caught') {
+          // Iconic Pokemon catch fanfare (3 clicks + victory arpeggio)
+          const notes = [587.33, 659.25, 783.99, 880.00, 1046.50];
+          notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+            gain.gain.setValueAtTime(0.25, now + idx * 0.08);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.35);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.08);
+            osc.stop(now + idx * 0.08 + 0.4);
+          });
+        } else if (effect === 'escape') {
+          // Low escape buzz
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(220, now);
+          osc.frequency.setValueAtTime(146.83, now + 0.18);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.42);
+        } else if (effect === 'hint') {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(520, now);
+          osc.frequency.exponentialRampToValueAtTime(1040, now + 0.12);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.2);
+        } else if (effect === 'fanfare') {
+          // Master completion chime
+          const chords = [523.25, 659.25, 783.99, 1046.50, 1318.51, 1567.98];
+          chords.forEach((f, i) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(f, now + i * 0.1);
+            gain.gain.setValueAtTime(0.2, now + i * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.1 + 0.5);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + i * 0.1);
+            osc.stop(now + i * 0.1 + 0.6);
+          });
+        }
+      } catch (err) {
+        console.warn('Audio waiting for user gesture.');
+      }
+    }
+
+    /* ========================================================
+       3. TEXT-TO-SPEECH (Web Speech API)
+       ======================================================== */
+    function pronounceTargetWord() {
+      if (!currentWord) return;
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        // Clean up word for pronunciation if needed (e.g. without extra hints)
+        const wordToSay = currentWord.english.replace("(n)", "").trim();
+        const utterance = new SpeechSynthesisUtterance(wordToSay);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.85;
+        utterance.pitch = 1.05;
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+
+    /* ========================================================
+       4. GAME STATE VARIABLES
+       ======================================================== */
+    let currentPlaylist = [];
+    let activeIndex = 0;
+    let currentWord = null;
+    let currentMode = 'type'; // 'type' | 'scramble'
+    let score = 0;
+    let caughtCount = 0;
+    let streak = 0;
+    let maxStreak = 0;
+    let hintsUsed = 0;
+    let isAnswered = false;
+    let mistakesList = [];
+    let caughtPokemonList = [];
+    let scrambleBuilt = [];
+
+    /* ========================================================
+       5. GAME FLOW & CONTROLLER
+       ======================================================== */
+    function shuffle(arr) {
+      const copy = [...arr];
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    }
+
+    function startTrainingGame(onlyMistakes = false) {
+      if (onlyMistakes && mistakesList.length > 0) {
+        currentPlaylist = shuffle(mistakesList);
+      } else {
+        currentPlaylist = shuffle(POKEMON_VOCAB);
+        caughtPokemonList = [];
+      }
+
+      mistakesList = [];
+      activeIndex = 0;
+      score = 0;
+      caughtCount = 0;
+      streak = 0;
+      maxStreak = 0;
+
+      updateStatsDisplay();
+
+      document.getElementById('pokedex-summary').classList.add('hidden');
+      document.getElementById('battle-card').classList.remove('hidden');
+
+      loadEncounter();
+    }
+
+    function loadEncounter() {
+      if (activeIndex >= currentPlaylist.length) {
+        finishBattleTour();
+        return;
+      }
+
+      currentWord = currentPlaylist[activeIndex];
+      hintsUsed = 0;
+      isAnswered = false;
+      scrambleBuilt = [];
+
+      // Update Target Hebrew & Pokemon info
+      document.getElementById('hebrew-target').innerText = currentWord.hebrew;
+      document.getElementById('poke-name').innerText = currentWord.poke;
+      
+      // Load Official Pokemon Sprite from PokeAPI GitHub CDN with fallback SVG
+      const spriteImg = document.getElementById('poke-sprite');
+      spriteImg.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${currentWord.pokeId}.png`;
+      spriteImg.onerror = function() {
+        // Fallback to crisp high-res showdown sprite
+        this.src = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${currentWord.pokeId}.png`;
+      };
+
+      // Update counters & Progress
+      document.getElementById('progress-indicator').innerText = `קרב ${activeIndex + 1} מתוך ${currentPlaylist.length} ⚡`;
+      const expPercent = ((activeIndex + 1) / currentPlaylist.length) * 100;
+      document.getElementById('exp-bar').style.width = `${expPercent}%`;
+
+      // Hide banners & hints
+      const feedback = document.getElementById('feedback-banner');
+      feedback.classList.add('hidden');
+      feedback.className = "hidden mt-3 p-3 rounded-2xl text-sm sm:text-base font-black flex items-center justify-center gap-2";
+
+      document.getElementById('hint-display').classList.add('hidden');
+
+      // Setup inputs
+      const inputEl = document.getElementById('word-input');
+      inputEl.value = '';
+      inputEl.disabled = false;
+      inputEl.classList.remove('border-emerald-500', 'border-rose-500', 'bg-emerald-50', 'bg-rose-50');
+
+      setupScrambleUI();
+
+      // Show Catch Button, Hide Next Button
+      document.getElementById('submit-btn').classList.remove('hidden');
+      document.getElementById('next-word-btn').classList.add('hidden');
+
+      // Pop-in animation
+      const card = document.getElementById('battle-card');
+      card.classList.remove('catch-anim');
+      void card.offsetWidth;
+      card.classList.add('catch-anim');
+
+      if (currentMode === 'type') {
+        setTimeout(() => inputEl.focus(), 150);
+      }
+
+      // Automatically pronounce
+      setTimeout(pronounceTargetWord, 350);
+    }
+
+    function setMode(mode) {
+      currentMode = mode;
+      const typeBtn = document.getElementById('mode-type-btn');
+      const scrambleBtn = document.getElementById('mode-scramble-btn');
+      const typeSection = document.getElementById('type-section');
+      const scrambleSection = document.getElementById('scramble-section');
+
+      if (mode === 'type') {
+        typeBtn.className = "px-4 py-1.5 sm:px-5 sm:py-2 rounded-2xl text-xs sm:text-sm font-black shadow-md border-2 bg-amber-300 text-indigo-950 border-amber-400 scale-105 transition-all";
+        scrambleBtn.className = "px-4 py-1.5 sm:px-5 sm:py-2 rounded-2xl text-xs sm:text-sm font-black shadow-md border-2 bg-white/80 text-slate-700 border-white/60 hover:bg-white transition-all";
+        typeSection.classList.remove('hidden');
+        scrambleSection.classList.add('hidden');
+        document.getElementById('word-input').focus();
+      } else {
+        scrambleBtn.className = "px-4 py-1.5 sm:px-5 sm:py-2 rounded-2xl text-xs sm:text-sm font-black shadow-md border-2 bg-amber-300 text-indigo-950 border-amber-400 scale-105 transition-all";
+        typeBtn.className = "px-4 py-1.5 sm:px-5 sm:py-2 rounded-2xl text-xs sm:text-sm font-black shadow-md border-2 bg-white/80 text-slate-700 border-white/60 hover:bg-white transition-all";
+        typeSection.classList.add('hidden');
+        scrambleSection.classList.remove('hidden');
+        setupScrambleUI();
+      }
+    }
+
+    /* ========================================================
+       6. SCRAMBLE MODE LETTERS
+       ======================================================== */
+    function setupScrambleUI() {
+      if (!currentWord) return;
+      const bank = document.getElementById('scramble-tiles-bank');
+      bank.innerHTML = '';
+      scrambleBuilt = [];
+      renderBuiltLetters();
+
+      // Clean characters (handles apostrophes and spaces)
+      const cleanChars = currentWord.english.toUpperCase().split('');
+      let shuffled = shuffle(cleanChars);
+
+      shuffled.forEach((char, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.id = `scramble-tile-${idx}`;
+        btn.innerText = char === ' ' ? '␣' : char;
+        btn.className = "font-eng w-10 h-11 sm:w-12 sm:h-13 bg-gradient-to-b from-white to-amber-50 border-2 border-amber-300 hover:bg-amber-400 text-slate-800 font-black text-lg sm:text-xl rounded-2xl shadow transition-transform active:scale-90";
+        btn.onclick = () => selectLetterTile(char, `scramble-tile-${idx}`);
+        bank.appendChild(btn);
+      });
+    }
+
+    function selectLetterTile(char, tileId) {
+      if (isAnswered) return;
+      playPokeSound('hint');
+      const tile = document.getElementById(tileId);
+      if (tile) {
+        tile.classList.add('opacity-25', 'pointer-events-none');
+      }
+      scrambleBuilt.push({ char, tileId });
+      renderBuiltLetters();
+    }
+
+    function removeLetterTile(index) {
+      if (isAnswered) return;
+      const removed = scrambleBuilt.splice(index, 1)[0];
+      if (removed && removed.tileId) {
+        const tile = document.getElementById(removed.tileId);
+        if (tile) {
+          tile.classList.remove('opacity-25', 'pointer-events-none');
+        }
+      }
+      renderBuiltLetters();
+    }
+
+    function resetScrambleWord() {
+      if (isAnswered) return;
+      scrambleBuilt.forEach(item => {
+        const tile = document.getElementById(item.tileId);
+        if (tile) {
+          tile.classList.remove('opacity-25', 'pointer-events-none');
+        }
+      });
+      scrambleBuilt = [];
+      renderBuiltLetters();
+    }
+
+    function renderBuiltLetters() {
+      const slot = document.getElementById('built-letters-slot');
+      slot.innerHTML = '';
+      if (scrambleBuilt.length === 0) {
+        slot.innerHTML = '<span class="text-slate-400 font-sans text-xs my-auto font-bold">לחצו על האותיות כדי להרכיב את המילה...</span>';
+        return;
+      }
+      scrambleBuilt.forEach((item, idx) => {
+        const chip = document.createElement('span');
+        chip.innerText = item.char;
+        chip.className = "inline-flex items-center justify-center w-8 h-9 sm:w-9 sm:h-10 bg-indigo-600 text-white rounded-xl shadow cursor-pointer hover:bg-rose-500 transition font-bold";
+        chip.onclick = () => removeLetterTile(idx);
+        slot.appendChild(chip);
+      });
+    }
+
+    /* ========================================================
+       7. HINTS & CHECKS
+       ======================================================== */
+    function askForHint() {
+      if (isAnswered) return;
+      hintsUsed++;
+      playPokeSound('hint');
+      const hintBox = document.getElementById('hint-display');
+      const hintContent = document.getElementById('hint-content');
+      hintBox.classList.remove('hidden');
+
+      const word = currentWord.english;
+      if (hintsUsed === 1) {
+        hintContent.innerText = `${word[0].toUpperCase()}${" _ ".repeat(word.length - 1)} (${word.length} אותיות)`;
+      } else {
+        const middle = " _ ".repeat(Math.max(1, word.length - 2));
+        hintContent.innerText = `${word[0].toUpperCase()}${middle}${word[word.length - 1].toUpperCase()}`;
+      }
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Enter') {
+        checkSpelling();
+      }
+    }
+
+    // Normalizes strings so both "I'm sorry" and "im sorry" match
+    function normalize(str) {
+      return str.toLowerCase().replace(/['’]/g, '').trim();
+    }
+
+    function checkSpelling() {
+      if (isAnswered) return;
+
+      let guess = '';
+      if (currentMode === 'type') {
+        guess = document.getElementById('word-input').value.trim();
+      } else {
+        guess = scrambleBuilt.map(i => i.char).join('');
+      }
+
+      if (!guess) {
+        shakeArena();
+        return;
+      }
+
+      playPokeSound('throw');
+
+      const target = currentWord.english;
+      const isCorrect = normalize(guess) === normalize(target) || 
+                        (currentWord.alt && normalize(guess) === normalize(currentWord.alt));
+
+      const feedback = document.getElementById('feedback-banner');
+      const inputEl = document.getElementById('word-input');
+
+      if (isCorrect) {
+        // SUCCESS: CATCH POKEMON
+        isAnswered = true;
+        caughtCount++;
+        streak++;
+        if (streak > maxStreak) maxStreak = streak;
+
+        const points = Math.max(10, 30 - hintsUsed * 10);
+        score += points;
+
+        if (!caughtPokemonList.some(p => p.id === currentWord.id)) {
+          caughtPokemonList.push(currentWord);
+        }
+
+        playPokeSound('caught');
+        confettiTrigger();
+
+        feedback.className = "mt-3 p-3 rounded-2xl text-sm sm:text-base font-black flex items-center justify-center gap-2 bg-emerald-100 text-emerald-900 border-2 border-emerald-400 catch-anim";
+        feedback.innerHTML = `
+          <span>🔴 תפסת את ${currentWord.poke}! האיות מדויק:</span>
+          <span dir="ltr" class="font-eng text-lg text-indigo-900 underline font-black">${currentWord.english}</span>
+          <span class="text-amber-500 font-bold">+${points} נק'</span>
+        `;
+        feedback.classList.remove('hidden');
+
+        if (currentMode === 'type') {
+          inputEl.disabled = true;
+          inputEl.classList.add('border-emerald-500', 'bg-emerald-50');
+        }
+
+        updateStatsDisplay();
+
+        document.getElementById('submit-btn').classList.add('hidden');
+        const nextBtn = document.getElementById('next-word-btn');
+        nextBtn.classList.remove('hidden');
+        nextBtn.focus();
+
+      } else {
+        // MISTAKE: POKEMON ESCAPED THIS ROUND
+        streak = 0;
+        updateStatsDisplay();
+        playPokeSound('escape');
+        shakeArena();
+
+        if (!mistakesList.some(item => item.id === currentWord.id)) {
+          mistakesList.push(currentWord);
+        }
+
+        feedback.className = "mt-3 p-3 rounded-2xl text-xs sm:text-sm font-black flex flex-col items-center justify-center gap-1 bg-rose-100 text-rose-900 border-2 border-rose-300 catch-anim";
+        feedback.innerHTML = `
+          <div>💨 הפוקימון התחמק! האיות הנכון הוא:</div>
+          <div dir="ltr" class="font-eng text-xl font-black text-indigo-900">${currentWord.english}</div>
+          <div class="text-[11px] text-rose-700">המשיכו לפוקימון הבא, נחזור אליו בסוף!</div>
+        `;
+        feedback.classList.remove('hidden');
+
+        if (currentMode === 'type') {
+          inputEl.classList.add('border-rose-400', 'bg-rose-50');
+          setTimeout(() => inputEl.classList.remove('border-rose-400', 'bg-rose-50'), 1500);
+        }
+
+        document.getElementById('submit-btn').classList.add('hidden');
+        document.getElementById('next-word-btn').classList.remove('hidden');
+      }
+    }
+
+    function shakeArena() {
+      const card = document.getElementById('battle-card');
+      card.classList.remove('shake-anim');
+      void card.offsetWidth;
+      card.classList.add('shake-anim');
+    }
+
+    function goToNextWord() {
+      activeIndex++;
+      loadEncounter();
+    }
+
+    function updateStatsDisplay() {
+      document.getElementById('score-count').innerText = score;
+      document.getElementById('caught-count').innerText = `${caughtCount}/${currentPlaylist.length}`;
+      document.getElementById('streak-count').innerText = streak;
+    }
+
+    function confettiTrigger() {
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 40,
+          spread: 60,
+          origin: { y: 0.7 }
+        });
+      }
+    }
+
+    /* ========================================================
+       8. RESULTS / POKEDEX SUMMARY
+       ======================================================== */
+    function finishBattleTour() {
+      playPokeSound('fanfare');
+      if (typeof confetti === 'function') {
+        confetti({
+          particleCount: 120,
+          spread: 100,
+          origin: { y: 0.5 }
+        });
+      }
+
+      document.getElementById('battle-card').classList.add('hidden');
+      const pokedexSummary = document.getElementById('pokedex-summary');
+      pokedexSummary.classList.remove('hidden');
+
+      document.getElementById('final-score').innerText = score;
+      document.getElementById('final-caught').innerText = `${caughtPokemonList.length}/${currentPlaylist.length}`;
+      document.getElementById('final-streak').innerText = maxStreak;
+
+      // Populate Pokédex Showcase
+      const grid = document.getElementById('pokedex-grid');
+      grid.innerHTML = '';
+
+      POKEMON_VOCAB.forEach(wordObj => {
+        const isCaught = caughtPokemonList.some(p => p.id === wordObj.id);
+        const card = document.createElement('div');
+        card.className = `p-2 rounded-xl flex flex-col items-center justify-center border-2 transition ${
+          isCaught ? 'bg-amber-50 border-amber-300 shadow' : 'bg-slate-100 border-slate-200 opacity-40 grayscale'
+        }`;
+        card.innerHTML = `
+          <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${wordObj.pokeId}.png" class="w-12 h-12 object-contain" />
+          <span class="font-eng font-bold text-[11px] text-slate-800">${wordObj.english}</span>
+          <span class="text-[10px] text-indigo-700 font-bold">${isCaught ? 'נתפס! 🔴' : 'ברח 💨'}</span>
+        `;
+        grid.appendChild(card);
+      });
+
+      const retryMistakesBtn = document.getElementById('retry-mistakes-btn');
+      if (mistakesList.length > 0) {
+        retryMistakesBtn.classList.remove('hidden');
+        retryMistakesBtn.innerText = `🎯 תרגול חוזר של ${mistakesList.length} הפוקימונים שברחו`;
+      } else {
+        retryMistakesBtn.classList.add('hidden');
+      }
+    }
+
+    /* ========================================================
+       9. WORD BANK MODAL
+       ======================================================== */
+    function populateWordBank() {
+      const container = document.getElementById('word-bank-list');
+      container.innerHTML = '';
+      POKEMON_VOCAB.forEach(item => {
+        const row = document.createElement('div');
+        row.className = "py-2 px-2 flex items-center justify-between hover:bg-amber-50 rounded-xl transition";
+        row.innerHTML = `
+          <div class="flex items-center gap-2">
+            <span class="font-eng font-black text-base text-indigo-900" dir="ltr">${item.english}</span>
+            <button onclick="speakDirect('${item.english}')" class="text-xs bg-slate-100 hover:bg-slate-200 p-1 rounded-lg">🔊</button>
+          </div>
+          <div class="text-right">
+            <span class="text-xs font-bold text-slate-800">${item.hebrew}</span>
+            <span class="text-[10px] text-amber-700 font-semibold block">(${item.poke})</span>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function speakDirect(w) {
+      if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance(w.replace("(n)", "").trim());
+        u.lang = 'en-US';
+        u.rate = 0.85;
+        window.speechSynthesis.speak(u);
+      }
+    }
+
+    function toggleWordBankModal() {
+      const modal = document.getElementById('word-bank-modal');
+      modal.classList.toggle('hidden');
+    }
+
+    // Launch game on load
+    window.onload = function() {
+      populateWordBank();
+      startTrainingGame(false);
+    };
+  </script>
+</body>
+</html>
